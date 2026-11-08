@@ -1,0 +1,261 @@
+<!DOCTYPE html>
+<html lang="pt-PT">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Biblioteca do Francisco</title>
+<link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>📚</text></svg>">
+<style>
+:root{--bg:#f6f4ef;--card:#fff;--ink:#1f2328;--muted:#6b6f76;--line:#e3dfd6;--accent:#b5452b;--accent2:#1f3864;--ok:#2e7d4f;--warn:#a86b00;--chip:#efe9dd}
+@media (prefers-color-scheme:dark){:root{--bg:#16181c;--card:#20242a;--ink:#eceae5;--muted:#a3a7ad;--line:#33383f;--accent:#e0765a;--accent2:#8fb0e8;--ok:#5cc28a;--warn:#e0a63a;--chip:#2b3037}}
+*{box-sizing:border-box}
+body{margin:0;font-family:"Segoe UI",Roboto,Helvetica,Arial,sans-serif;background:var(--bg);color:var(--ink)}
+header{position:sticky;top:0;z-index:5;background:var(--accent2);color:#fff;padding:12px 16px;display:flex;align-items:center;gap:12px;flex-wrap:wrap}
+header h1{font-family:Georgia,"Times New Roman",serif;font-size:1.35rem;margin:0;flex:1}
+header .who{font-size:.85rem;opacity:.9}
+nav{display:flex;gap:6px;flex-wrap:wrap;padding:10px 16px;border-bottom:1px solid var(--line);background:var(--card)}
+nav button{border:1px solid var(--line);background:var(--bg);color:var(--ink);padding:7px 12px;border-radius:999px;cursor:pointer;font-size:.9rem}
+nav button.on{background:var(--accent);border-color:var(--accent);color:#fff}
+main{padding:16px;max-width:1300px;margin:0 auto}
+.filters{display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-bottom:14px}
+.filters input,.filters select{padding:8px 10px;border:1px solid var(--line);border-radius:8px;background:var(--card);color:var(--ink);font-size:.9rem}
+.filters label{font-size:.88rem;color:var(--muted);display:flex;gap:5px;align-items:center}
+.count{color:var(--muted);font-size:.85rem;margin-left:auto}
+.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(250px,1fr));gap:14px}
+.card{background:var(--card);border:1px solid var(--line);border-radius:12px;overflow:hidden;display:flex;flex-direction:column}
+.cover{height:210px;background:var(--chip);display:flex;align-items:center;justify-content:center;overflow:hidden}
+.cover img{max-height:100%;max-width:100%;object-fit:contain}
+.ph{font-family:Georgia,serif;font-size:2.4rem;color:var(--muted);text-align:center;padding:10px}
+.ph small{display:block;font-size:.8rem;margin-top:6px;font-family:inherit}
+.body{padding:12px;display:flex;flex-direction:column;gap:6px;flex:1}
+.serie{font-size:.78rem;text-transform:uppercase;letter-spacing:.04em;color:var(--accent)}
+.titulo{font-weight:600;line-height:1.25}
+.orig{font-size:.82rem;color:var(--muted);font-style:italic}
+.prices{display:flex;gap:10px;font-size:.88rem}
+.prices b{font-variant-numeric:tabular-nums}
+.links{display:flex;flex-wrap:wrap;gap:5px;margin-top:2px}
+.links a{font-size:.75rem;text-decoration:none;border:1px solid var(--line);border-radius:6px;padding:3px 7px;color:var(--ink);background:var(--bg)}
+.act{margin-top:auto;padding-top:6px}
+.btn{width:100%;border:0;border-radius:8px;padding:9px;font-size:.9rem;cursor:pointer;background:var(--accent);color:#fff}
+.btn.sec{background:var(--chip);color:var(--ink)}
+.badge{display:inline-block;font-size:.78rem;padding:3px 8px;border-radius:999px;background:var(--chip)}
+.badge.ok{color:var(--ok)} .badge.warn{color:var(--warn)}
+.star{color:#d4a017}
+table{width:100%;border-collapse:collapse;background:var(--card);border:1px solid var(--line);border-radius:10px;overflow:hidden}
+th,td{padding:9px 10px;border-bottom:1px solid var(--line);text-align:left;font-size:.9rem;vertical-align:top}
+th{background:var(--chip)}
+.wrap{overflow-x:auto}
+#login{max-width:420px;margin:12vh auto;text-align:center;background:var(--card);padding:28px;border-radius:14px;border:1px solid var(--line)}
+#login h2{font-family:Georgia,serif;margin-top:0}
+#gbtn{display:flex;justify-content:center;margin:18px 0}
+.origin{font-size:.72rem;color:var(--muted);word-break:break-all}
+.err{color:var(--accent);margin-top:10px}
+#modal{position:fixed;inset:0;background:rgba(0,0,0,.45);display:none;align-items:center;justify-content:center;z-index:20}
+#modal .box{background:var(--card);padding:20px;border-radius:12px;max-width:380px;width:90%}
+#modal .row{display:flex;gap:8px;margin-top:16px}
+#toast{position:fixed;bottom:18px;left:50%;transform:translateX(-50%);background:var(--ink);color:var(--bg);padding:10px 16px;border-radius:8px;display:none;z-index:30;font-size:.9rem}
+.loading{opacity:.5;pointer-events:none}
+</style>
+</head>
+<body>
+
+<div id="login">
+  <h2>📚 Biblioteca do Francisco</h2>
+  <p>Inicia sessão com a tua conta Google para veres a lista.</p>
+  <div id="gbtn"></div>
+  <div id="loginErr" class="err"></div>
+  <p class="origin">Origem desta página: <span id="orig"></span></p>
+</div>
+
+<div id="app" style="display:none">
+  <header><h1>📚 Biblioteca do Francisco</h1><span class="who" id="who"></span><button class="btn sec" style="width:auto;padding:6px 10px" onclick="google.accounts.id.disableAutoSelect();logout()">Sair</button></header>
+  <nav id="nav"></nav>
+  <main id="main"></main>
+</div>
+
+<div id="modal"><div class="box"><div id="mtext"></div><div class="row">
+  <button class="btn sec" id="mno">Cancelar</button><button class="btn" id="myes">Confirmar</button></div></div></div>
+<div id="toast"></div>
+
+<script>
+/* ====== CONFIGURAÇÃO: preencher estes dois valores ====== */
+const CLIENT_ID = 'COLAR_AQUI_O_ID_DE_CLIENTE.apps.googleusercontent.com';
+const API_URL   = 'COLAR_AQUI_O_URL_DA_APLICACAO_WEB/exec';
+/* ======================================================== */
+let TOKEN = null, DATA = null, VIEW = 'falta';
+const F = { serie: '', q: '', sort: 'prio', soPrio: false, esconder: false };
+
+document.getElementById('orig').textContent = location.origin;
+
+function tokenExp(t) { try { return JSON.parse(atob(t.split('.')[1].replace(/-/g, '+').replace(/_/g, '/'))).exp * 1000; } catch (e) { return 0; } }
+
+function initGis() {
+  google.accounts.id.initialize({ client_id: CLIENT_ID, callback: r => {
+    TOKEN = r.credential;
+    try { sessionStorage.setItem('bf_token', TOKEN); } catch (e) {}
+    load();
+  } });
+  try {
+    const saved = sessionStorage.getItem('bf_token');
+    if (saved && tokenExp(saved) > Date.now() + 60000) { TOKEN = saved; load(); }
+  } catch (e) {}
+  google.accounts.id.renderButton(document.getElementById('gbtn'), { theme: 'filled_blue', size: 'large', text: 'signin_with', locale: 'pt-PT' });
+}
+
+async function call(action, ...args) {
+  if (TOKEN && tokenExp(TOKEN) < Date.now() + 30000) { logout('A sessão expirou. Volta a iniciar sessão.'); throw new Error('Sessão expirada.'); }
+  const r = await fetch(API_URL, { method: 'POST', headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+    body: JSON.stringify({ action, token: TOKEN, args }) });
+  const j = await r.json();
+  if (!j.ok) throw new Error(j.error);
+  return j.data;
+}
+function logout(msg) {
+  TOKEN = null; try { sessionStorage.removeItem('bf_token'); } catch (e) {}
+  document.getElementById('app').style.display = 'none';
+  document.getElementById('login').style.display = 'block';
+  document.getElementById('loginErr').textContent = msg || '';
+}
+
+async function load() {
+  try {
+    DATA = await call('getData');
+    document.getElementById('login').style.display = 'none';
+    document.getElementById('app').style.display = 'block';
+    document.getElementById('who').textContent = 'Olá, ' + DATA.user.name;
+    render();
+  } catch (e) { logout(e.message || e); }
+}
+
+async function act(fn, ...args) {
+  document.body.classList.add('loading');
+  try { DATA = await call(fn, ...args); render(); }
+  catch (e) { toast(e.message || e); if (/sessão/i.test(e.message || '')) logout(e.message); }
+  finally { document.body.classList.remove('loading'); }
+}
+
+function ask(msg) {
+  return new Promise(res => {
+    const m = document.getElementById('modal');
+    document.getElementById('mtext').innerHTML = msg;
+    m.style.display = 'flex';
+    document.getElementById('myes').onclick = () => { m.style.display = 'none'; res(true); };
+    document.getElementById('mno').onclick = () => { m.style.display = 'none'; res(false); };
+  });
+}
+function toast(t) { const el = document.getElementById('toast'); el.textContent = t; el.style.display = 'block'; setTimeout(() => el.style.display = 'none', 3500); }
+const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+const eur = v => v == null ? '—' : v.toLocaleString('pt-PT', { style: 'currency', currency: 'EUR' });
+const stars = p => p ? '<span class="star">' + '★'.repeat(4 - p) + '</span>' : '';
+const short = s => s.split(' (')[0].split(' –')[0];
+
+function render() {
+  const tabs = DATA.user.owner
+    ? [['falta', 'Em falta'], ['colecao', 'A minha coleção'], ['prio', 'Prioridades'], ['troca', 'Para troca']]
+    : [['falta', 'Em falta'], ['minhas', 'As minhas reservas'], ['colecao', 'Coleção do Francisco'], ['troca', 'Para troca']];
+  document.getElementById('nav').innerHTML = tabs.map(t =>
+    `<button class="${VIEW === t[0] ? 'on' : ''}" onclick="VIEW='${t[0]}';render()">${t[1]}</button>`).join('');
+  const m = document.getElementById('main');
+  if (VIEW === 'falta') m.innerHTML = viewFalta();
+  if (VIEW === 'minhas') m.innerHTML = viewMinhas();
+  if (VIEW === 'colecao') m.innerHTML = viewColecao();
+  if (VIEW === 'prio') m.innerHTML = viewPrio();
+  if (VIEW === 'troca') m.innerHTML = viewTroca();
+}
+
+function viewFalta() {
+  const series = [...new Set(DATA.books.map(b => b.serie))].sort((a, b) => a.localeCompare(b, 'pt'));
+  let list = DATA.books.filter(b =>
+    (!F.serie || b.serie === F.serie) &&
+    (!F.soPrio || b.prio === 1) &&
+    (!F.esconder || !b.reserva) &&
+    (!F.q || (b.serie + ' ' + b.pt + ' ' + b.orig + ' ' + b.aut).toLowerCase().includes(F.q.toLowerCase())));
+  const byNum = (a, b) => a.serie.localeCompare(b.serie, 'pt') || (parseFloat(a.n) || 999) - (parseFloat(b.n) || 999);
+  const byPrice = k => (a, b) => (a[k] ?? 1e9) - (b[k] ?? 1e9) || byNum(a, b);
+  const sorts = { prio: (a, b) => (a.prio || 9) - (b.prio || 9) || byNum(a, b), serie: byNum, novo: byPrice('pNovo'), usado: byPrice('p2') };
+  list.sort(sorts[F.sort]);
+  const filters = `<div class="filters">
+    <input id="qs" type="search" placeholder="Pesquisar título, série, autor…" value="${esc(F.q)}" oninput="F.q=this.value;render();const s=document.getElementById('qs');s.focus();s.setSelectionRange(s.value.length,s.value.length)">
+    <select onchange="F.serie=this.value;render()"><option value="">Todas as séries</option>${series.map(s => `<option ${s === F.serie ? 'selected' : ''}>${esc(s)}</option>`).join('')}</select>
+    <select onchange="F.sort=this.value;render()">
+      ${[['prio', 'Ordenar: prioridade'], ['serie', 'Ordenar: série'], ['novo', 'Preço novo ↑'], ['usado', 'Preço 2.ª mão ↑']].map(o => `<option value="${o[0]}" ${F.sort === o[0] ? 'selected' : ''}>${o[1]}</option>`).join('')}
+    </select>
+    <label><input type="checkbox" ${F.soPrio ? 'checked' : ''} onchange="F.soPrio=this.checked;render()"> Só prioritárias</label>
+    ${DATA.user.owner ? '' : `<label><input type="checkbox" ${F.esconder ? 'checked' : ''} onchange="F.esconder=this.checked;render()"> Esconder reservados</label>`}
+    <span class="count">${list.length} livros</span></div>`;
+  return filters + `<div class="grid">${list.map(card).join('')}</div>`;
+}
+
+function card(b) {
+  const title = b.pt || b.orig;
+  const q = encodeURIComponent(short(b.serie) + ' ' + title.replace(/[()]/g, ''));
+  const slug = (short(b.serie) + ' ' + title).toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
+  const qfr = encodeURIComponent(short(b.serie) + ' ' + (b.orig || title));
+  const cover = b.capa
+    ? `<img src="${esc(b.capa)}" alt="" loading="lazy" referrerpolicy="no-referrer" onerror="this.parentNode.innerHTML='<div class=ph>📖</div>'">`
+    : `<div class="ph">📖<small>${esc(short(b.serie))}</small></div>`;
+  let action = '';
+  if (DATA.user.owner) action = `<button class="btn sec" onclick="recebi('${b.id}')">Já tenho este livro</button>`;
+  else if (b.reserva === 'minha') action = `<span class="badge ok">✔ Reservado por ti</span>`;
+  else if (b.reserva === 'outro') action = `<span class="badge warn">Já reservado</span>`;
+  else action = `<button class="btn" onclick="reservar('${b.id}')">🎁 Já encomendei</button>`;
+  return `<div class="card"><div class="cover">${cover}</div><div class="body">
+    <div class="serie">${stars(b.prio)} ${esc(b.serie)}${b.n && b.n !== '—' ? ' · n.º ' + esc(b.n) : ''}</div>
+    <div class="titulo">${esc(title)}</div>
+    ${b.pt && b.orig && b.orig !== b.pt ? `<div class="orig">${esc(b.orig)}</div>` : ''}
+    <div class="prices"><span>Novo: <b>${eur(b.pNovo)}</b></span><span>2.ª mão: <b>${eur(b.p2)}</b></span></div>
+    <div class="links">
+      <a target="_blank" rel="noopener" href="https://www.olx.pt/ads/q-${slug}/">OLX</a>
+      <a target="_blank" rel="noopener" href="https://www.vinted.pt/catalog?search_text=${q}">Vinted</a>
+      <a target="_blank" rel="noopener" href="https://www.wook.pt/pesquisa?keyword=${q}">Wook</a>
+      <a target="_blank" rel="noopener" href="https://www.bertrand.pt/pesquisa/${q}">Bertrand</a>
+      <a target="_blank" rel="noopener" href="https://www.bdfugue.com/catalogsearch/result/?q=${qfr}">BDfugue</a>
+    </div>
+    <div class="act">${action}</div></div></div>`;
+}
+
+async function reservar(id) {
+  const b = DATA.books.find(x => x.id === id);
+  if (await ask(`Confirmas que <b>já encomendaste</b> «${esc(b.pt || b.orig)}» (${esc(b.serie)})?<br><br>Os outros vão ver este livro como «Já reservado». O Francisco não vê nada.`))
+    act('reserve', id);
+}
+async function recebi(id) {
+  const b = DATA.books.find(x => x.id === id);
+  if (await ask(`Marcar «${esc(b.pt || b.orig)}» como já estando na tua coleção?`)) act('markReceived', id, true);
+}
+
+function viewMinhas() {
+  if (!DATA.mine.length) return '<p>Ainda não tens reservas. Quando encomendares um livro, marca-o com «Já encomendei».</p>';
+  return `<div class="wrap"><table><tr><th>Livro</th><th>Desde</th><th>Estado</th><th></th></tr>${DATA.mine.map(r => `
+    <tr><td><b>${esc(r.livro.t)}</b><br><small>${esc(r.livro.serie)} ${r.livro.n ? '· n.º ' + esc(r.livro.n) : ''}</small></td>
+    <td>${esc(r.created)}</td>
+    <td>${r.state === 'Concluída' ? '<span class="badge ok">O Francisco já tem este livro</span>' :
+      `<select onchange="act('setReservationState','${r.id}',this.value)">${['Encomendado', 'Recebido', 'Oferecido'].map(s => `<option ${s === r.state ? 'selected' : ''}>${s}</option>`).join('')}</select>`}</td>
+    <td>${r.state === 'Concluída' ? '' : `<button class="btn sec" onclick="retirar('${r.id}')">Retirar</button>`}</td></tr>`).join('')}</table></div>`;
+}
+async function retirar(id) { if (await ask('Retirar esta reserva? O livro volta a ficar disponível para os outros.')) act('setReservationState', id, 'Retirada'); }
+
+function viewColecao() {
+  const rec = DATA.received.length ? `<h3>Recebidos através do portal</h3><div class="wrap"><table><tr><th>Série</th><th>Título</th>${DATA.user.owner ? '<th></th>' : ''}</tr>
+    ${DATA.received.map(b => `<tr><td>${esc(b.serie)} ${b.n ? '· ' + esc(b.n) : ''}</td><td>${esc(b.pt || b.orig)}</td>${DATA.user.owner ? `<td><button class="btn sec" onclick="act('markReceived','${b.id}',false)">Desfazer</button></td>` : ''}</tr>`).join('')}</table></div>` : '';
+  return `<div class="wrap"><table><tr><th>Série</th><th>Volumes</th><th>Estado</th></tr>${DATA.owned.map(o =>
+    `<tr><td><b>${esc(o.serie)}</b></td><td>${esc(o.vols)}</td><td>${esc(o.estado)}</td></tr>`).join('')}</table></div>${rec}`;
+}
+
+function viewPrio() {
+  const s = DATA.series.slice().sort((a, b) => (a.prio || 9) - (b.prio || 9) || a.serie.localeCompare(b.serie, 'pt'));
+  return `<p>Escolhe as séries que mais te interessa completar. A família vê-as com estrelas e pode filtrá-las.</p>
+  <div class="wrap"><table><tr><th>Série</th><th>Prioridade</th><th>Em falta</th></tr>${s.map(x => `<tr><td>${esc(x.serie)}</td>
+  <td><select onchange="act('setPriority',${esc(JSON.stringify(x.serie))},this.value?Number(this.value):'')">
+    ${[['', '—'], ['1', '★★★ Alta'], ['2', '★★ Média'], ['3', '★ Baixa']].map(o => `<option value="${o[0]}" ${String(x.prio || '') === o[0] ? 'selected' : ''}>${o[1]}</option>`).join('')}
+  </select></td><td>${DATA.books.filter(b => b.serie === x.serie).length}</td></tr>`).join('')}</table></div>`;
+}
+
+function viewTroca() {
+  return `<p>Livros em duplicado, disponíveis para troca ou venda.</p><div class="wrap"><table><tr><th>Série</th><th>Título</th><th>Exemplares</th><th>Nota</th></tr>
+  ${DATA.dups.map(d => `<tr><td>${esc(d.serie)}</td><td>${esc(d.titulo)}</td><td>${esc(d.n)}</td><td>${esc(d.nota)}</td></tr>`).join('')}</table></div>`;
+}
+</script>
+<script src="https://accounts.google.com/gsi/client" async defer onload="initGis()"></script>
+</body>
+</html>

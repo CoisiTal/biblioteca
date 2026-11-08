@@ -55,6 +55,31 @@ th{background:var(--chip)}
 #modal .row{display:flex;gap:8px;margin-top:16px}
 #toast{position:fixed;bottom:18px;left:50%;transform:translateX(-50%);background:var(--ink);color:var(--bg);padding:10px 16px;border-radius:8px;display:none;z-index:30;font-size:.9rem}
 .loading{opacity:.5;pointer-events:none}
+.cover{position:relative}
+.cedit{position:absolute;top:8px;right:8px;display:flex;gap:6px}
+.cedit button{border:0;border-radius:8px;padding:6px 8px;cursor:pointer;background:rgba(0,0,0,.6);color:#fff;font-size:.85rem}
+.cedit button:hover{background:rgba(0,0,0,.8)}
+.scard{cursor:pointer;transition:transform .15s}
+.scard:hover{transform:translateY(-2px)}
+.scard .cover{height:170px}
+.kpi{display:flex;align-items:baseline;gap:8px}
+.kpi .big{font-size:1.5rem;font-weight:700;font-variant-numeric:tabular-nums}
+.kpi .small{color:var(--muted);font-size:.85rem}
+.bar{height:8px;border-radius:999px;background:var(--chip);overflow:hidden}
+.bar span{display:block;height:100%;background:var(--accent2)}
+.bar.done span{background:var(--ok)}
+.done-flag{position:absolute;top:8px;left:8px;background:var(--ok);color:#fff;font-size:.78rem;font-weight:600;padding:4px 9px;border-radius:999px}
+.chips{display:flex;gap:4px;flex-wrap:wrap}
+.chip{font-size:.72rem;padding:2px 7px;border-radius:999px;background:var(--chip);color:var(--muted)}
+.owned-badge{display:inline-block;font-size:.78rem;padding:3px 8px;border-radius:999px;background:var(--ok);color:#fff}
+#sheet{position:fixed;inset:0;background:rgba(0,0,0,.55);display:none;z-index:15;overflow-y:auto;padding:24px 12px}
+#sheet .panel{background:var(--bg);max-width:1200px;margin:0 auto;border-radius:14px;padding:18px;border:1px solid var(--line)}
+#sheet .top{display:flex;align-items:flex-start;gap:12px;margin-bottom:14px}
+#sheet .top h2{margin:0;font-family:Georgia,serif;flex:1}
+#sheet .close{border:0;background:var(--chip);color:var(--ink);border-radius:8px;padding:8px 12px;cursor:pointer;font-size:1rem}
+#modal{z-index:40}
+#modal input{width:100%;padding:9px;border:1px solid var(--line);border-radius:8px;background:var(--bg);color:var(--ink);margin-top:10px}
+#modal img{max-width:100%;max-height:200px;display:block;margin:10px auto 0}
 </style>
 </head>
 <body>
@@ -73,19 +98,22 @@ th{background:var(--chip)}
   <main id="main"></main>
 </div>
 
+<div id="sheet" onclick="if(event.target===this)closeSheet()"><div class="panel" id="sheetPanel"></div></div>
 <div id="modal"><div class="box"><div id="mtext"></div><div class="row">
   <button class="btn sec" id="mno">Cancelar</button><button class="btn" id="myes">Confirmar</button></div></div></div>
 <div id="toast"></div>
 
 <script>
 /* ====== CONFIGURAÇÃO: preencher estes dois valores ====== */
-const CLIENT_ID = '266726387892-siuc44ev8jjib80trlb12ocm52ihvtph.apps.googleusercontent.com';
-const API_URL   = 'https://script.google.com/macros/s/AKfycbyVB9XtjMt-aIIARwjzHAOHCF8XfXkieZLVBr-lke-aKf8U6NmgFOyj4QBdCqgsBXni/exec';
+const CLIENT_ID = 'COLAR_AQUI_O_ID_DE_CLIENTE.apps.googleusercontent.com';
+const API_URL   = 'COLAR_AQUI_O_URL_DA_APLICACAO_WEB/exec';
 /* ======================================================== */
-let TOKEN = null, DATA = null, VIEW = 'falta';
+let TOKEN = null, DATA = null, VIEW = 'falta', OPEN_SERIE = null;
 const F = { serie: '', q: '', sort: 'prio', soPrio: false, esconder: false };
+const C = { q: '', autor: '', idioma: '', editora: '', estado: '', soPrio: false, sort: 'nome' };
 
 document.getElementById('orig').textContent = location.origin;
+document.addEventListener('keydown', e => { if (e.key === 'Escape' && OPEN_SERIE && document.getElementById('modal').style.display !== 'flex') closeSheet(); });
 
 function tokenExp(t) { try { return JSON.parse(atob(t.split('.')[1].replace(/-/g, '+').replace(/_/g, '/'))).exp * 1000; } catch (e) { return 0; } }
 
@@ -161,6 +189,7 @@ function render() {
   if (VIEW === 'colecao') m.innerHTML = viewColecao();
   if (VIEW === 'prio') m.innerHTML = viewPrio();
   if (VIEW === 'troca') m.innerHTML = viewTroca();
+  if (OPEN_SERIE) renderSheet();
 }
 
 function viewFalta() {
@@ -191,11 +220,9 @@ function card(b) {
   const q = encodeURIComponent(short(b.serie) + ' ' + title.replace(/[()]/g, ''));
   const slug = (short(b.serie) + ' ' + title).toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
   const qfr = encodeURIComponent(short(b.serie) + ' ' + (b.orig || title));
-  const cover = b.capa
-    ? `<img src="${esc(b.capa)}" alt="" loading="lazy" referrerpolicy="no-referrer" onerror="this.parentNode.innerHTML='<div class=ph>📖</div>'">`
-    : `<div class="ph">📖<small>${esc(short(b.serie))}</small></div>`;
+  const cover = coverHtml(b);
   let action = '';
-  if (DATA.user.owner) action = `<button class="btn sec" onclick="recebi('${b.id}')">Já tenho este livro</button>`;
+  if (DATA.user.owner) action = `<button class="btn sec" onclick="recebi('${b.id}')">✔ Marcar como adquirido</button>`;
   else if (b.reserva === 'minha') action = `<span class="badge ok">✔ Reservado por ti</span>`;
   else if (b.reserva === 'outro') action = `<span class="badge warn">Já reservado</span>`;
   else action = `<button class="btn" onclick="reservar('${b.id}')">🎁 Já encomendei</button>`;
@@ -235,11 +262,142 @@ function viewMinhas() {
 }
 async function retirar(id) { if (await ask('Retirar esta reserva? O livro volta a ficar disponível para os outros.')) act('setReservationState', id, 'Retirada'); }
 
+function coverHtml(b) {
+  const img = b.capa
+    ? `<img src="${esc(b.capa)}" alt="" loading="lazy" referrerpolicy="no-referrer" onerror="this.outerHTML='<div class=ph>📖</div>'">`
+    : `<div class="ph">📖<small>${esc(short(b.serie))}</small></div>`;
+  const edit = DATA.user.owner
+    ? `<div class="cedit"><button title="Nova capa (URL)" onclick="event.stopPropagation();editCover('${b.id}')">✏️</button>${b.capa ? `<button title="Remover capa" onclick="event.stopPropagation();removeCover('${b.id}')">🗑</button>` : ''}</div>`
+    : '';
+  return img + edit;
+}
+
+function promptUrl(titulo, atual) {
+  return new Promise(res => {
+    const m = document.getElementById('modal');
+    document.getElementById('mtext').innerHTML = `<b>Nova capa</b> — ${esc(titulo)}<br><small>Cola o endereço (https://…) de uma imagem. Dica: no site da livraria, botão direito na capa › «Copiar endereço da imagem».</small>
+      <input id="urlIn" type="url" placeholder="https://…" value="${esc(atual || '')}" oninput="document.getElementById('urlPrev').src=this.value">
+      <img id="urlPrev" src="${esc(atual || '')}" alt="" referrerpolicy="no-referrer" onerror="this.style.display='none'" onload="this.style.display='block'">`;
+    m.style.display = 'flex';
+    document.getElementById('myes').onclick = () => { const v = document.getElementById('urlIn').value.trim(); m.style.display = 'none'; res(v || null); };
+    document.getElementById('mno').onclick = () => { m.style.display = 'none'; res(null); };
+  });
+}
+function findAlbum(id) { return DATA.books.find(x => x.id === id) || DATA.owned.find(x => x.id === id); }
+async function editCover(id) {
+  const b = findAlbum(id);
+  const url = await promptUrl(b.pt || b.orig, b.capa);
+  if (url) act('setCover', id, url);
+}
+async function removeCover(id) {
+  const b = findAlbum(id);
+  if (await ask(`Remover a capa de «${esc(b.pt || b.orig)}»?`)) act('setCover', id, '');
+}
+async function editSeriesCover(serie) {
+  const s = DATA.series.find(x => x.serie === serie) || {};
+  const url = await promptUrl('Série ' + serie, s.capa);
+  if (url) act('setSeriesCover', serie, url);
+}
+
+const splitAut = a => String(a || '').split(/\s*[\/;,]\s*|\s+e\s+/).map(x => x.trim()).filter(x => x && x !== '—');
+const splitEd = e => String(e || '').split(/\s*\/\s*/).map(x => x.replace(/\((PT|FR)\)/g, '').trim()).filter(x => x && x !== '—' && !/^\(/.test(x));
+function volCount(n) {
+  const m = String(n).match(/^(\d+)\s*[–-]\s*(\d+)$/);
+  if (m) return { n: Number(m[2]) - Number(m[1]) + 1, approx: false };
+  return { n: 1, approx: /\+|\?|restantes|seguintes/i.test(String(n)) };
+}
+function seriesStats() {
+  const map = {};
+  const get = s => map[s] || (map[s] = { serie: s, owned: [], missing: [], aut: new Set(), ed: new Set(), lang: new Set(), approx: false, miss: 0 });
+  DATA.owned.forEach(b => { const x = get(b.serie); x.owned.push(b); splitAut(b.aut).forEach(a => x.aut.add(a)); splitEd(b.ed).forEach(e => x.ed.add(e)); x.lang.add(b.idioma); });
+  DATA.books.forEach(b => {
+    const x = get(b.serie); x.missing.push(b); splitAut(b.aut).forEach(a => x.aut.add(a));
+    const v = volCount(b.n + ' ' + (b.pt || b.orig)); x.miss += volCount(b.n).n; if (v.approx || volCount(b.n).approx) x.approx = true;
+  });
+  const ser = {}; DATA.series.forEach(s => ser[s.serie] = s);
+  return Object.values(map).map(x => {
+    x.prio = (ser[x.serie] || {}).prio || null;
+    x.capa = (ser[x.serie] || {}).capa || (x.owned.find(b => b.capa) || x.missing.find(b => b.capa) || {}).capa || '';
+    x.total = x.owned.length + x.miss;
+    x.pct = x.total ? Math.round(100 * x.owned.length / x.total) : 0;
+    x.done = x.missing.length === 0 && x.owned.length > 0;
+    x.group = /^Álbuns isolados|^Graphic novels/.test(x.serie);
+    return x;
+  });
+}
+
 function viewColecao() {
-  const rec = DATA.received.length ? `<h3>Recebidos através do portal</h3><div class="wrap"><table><tr><th>Série</th><th>Título</th>${DATA.user.owner ? '<th></th>' : ''}</tr>
-    ${DATA.received.map(b => `<tr><td>${esc(b.serie)} ${b.n ? '· ' + esc(b.n) : ''}</td><td>${esc(b.pt || b.orig)}</td>${DATA.user.owner ? `<td><button class="btn sec" onclick="act('markReceived','${b.id}',false)">Desfazer</button></td>` : ''}</tr>`).join('')}</table></div>` : '';
-  return `<div class="wrap"><table><tr><th>Série</th><th>Volumes</th><th>Estado</th></tr>${DATA.owned.map(o =>
-    `<tr><td><b>${esc(o.serie)}</b></td><td>${esc(o.vols)}</td><td>${esc(o.estado)}</td></tr>`).join('')}</table></div>${rec}`;
+  const all = seriesStats();
+  const autores = [...new Set(all.flatMap(x => [...x.aut]))].sort((a, b) => a.localeCompare(b, 'pt'));
+  const editoras = [...new Set(all.flatMap(x => [...x.ed]))].sort((a, b) => a.localeCompare(b, 'pt'));
+  const idiomas = [...new Set(all.flatMap(x => [...x.lang]))].sort();
+  let list = all.filter(x =>
+    (!C.q || (x.serie + ' ' + [...x.aut].join(' ') + ' ' + x.owned.concat(x.missing).map(b => b.pt + ' ' + b.orig).join(' ')).toLowerCase().includes(C.q.toLowerCase())) &&
+    (!C.autor || x.aut.has(C.autor)) && (!C.idioma || x.lang.has(C.idioma)) && (!C.editora || x.ed.has(C.editora)) &&
+    (!C.soPrio || x.prio === 1) &&
+    (!C.estado || (C.estado === 'completa' ? x.done : C.estado === 'incompleta' ? !x.done && x.owned.length : C.estado === 'nova' ? !x.owned.length : true)));
+  const sorts = {
+    nome: (a, b) => a.group - b.group || a.serie.localeCompare(b.serie, 'pt'),
+    pct: (a, b) => b.pct - a.pct || a.serie.localeCompare(b.serie, 'pt'),
+    falta: (a, b) => b.miss - a.miss || a.serie.localeCompare(b.serie, 'pt'),
+    tenho: (a, b) => b.owned.length - a.owned.length || a.serie.localeCompare(b.serie, 'pt')
+  };
+  list.sort(sorts[C.sort]);
+  const totOwned = all.reduce((s, x) => s + x.owned.length, 0);
+  const totDone = all.filter(x => x.done && !x.group).length;
+  const sel = (key, label, opts) => `<select onchange="C.${key}=this.value;render()"><option value="">${label}</option>${opts.map(o => `<option value="${esc(o[0])}" ${C[key] === o[0] ? 'selected' : ''}>${esc(o[1])}</option>`).join('')}</select>`;
+  const filters = `<div class="filters">
+    <input id="cqs" type="search" placeholder="Pesquisar série, título, autor…" value="${esc(C.q)}" oninput="C.q=this.value;render();const s=document.getElementById('cqs');s.focus();s.setSelectionRange(s.value.length,s.value.length)">
+    ${sel('autor', 'Todos os autores', autores.map(a => [a, a]))}
+    ${sel('editora', 'Todas as editoras', editoras.map(a => [a, a]))}
+    ${sel('idioma', 'Todos os idiomas', idiomas.map(a => [a, { PT: 'Português', FR: 'Francês', EN: 'Inglês', ES: 'Espanhol' }[a] || a]))}
+    ${sel('estado', 'Todas as séries', [['completa', 'Completas'], ['incompleta', 'Incompletas'], ['nova', 'Ainda sem nenhum']])}
+    <select onchange="C.sort=this.value;render()">${[['nome', 'Ordenar: nome'], ['pct', '% completa ↓'], ['falta', 'Mais em falta'], ['tenho', 'Mais volumes']].map(o => `<option value="${o[0]}" ${C.sort === o[0] ? 'selected' : ''}>${o[1]}</option>`).join('')}</select>
+    <label><input type="checkbox" ${C.soPrio ? 'checked' : ''} onchange="C.soPrio=this.checked;render()"> Só prioritárias</label>
+    <span class="count">${totOwned} álbuns · ${totDone} séries completas · ${list.length} séries visíveis</span></div>`;
+  return filters + `<div class="grid">${list.map(seriesCard).join('')}</div>`;
+}
+
+function seriesCard(x) {
+  const img = x.capa ? `<img src="${esc(x.capa)}" alt="" loading="lazy" referrerpolicy="no-referrer" onerror="this.outerHTML='<div class=ph>📚</div>'">` : `<div class="ph">📚<small>${esc(x.serie)}</small></div>`;
+  const edit = DATA.user.owner ? `<div class="cedit"><button title="Capa da série" onclick="event.stopPropagation();editSeriesCover(${esc(JSON.stringify(x.serie))})">✏️</button></div>` : '';
+  const kpi = x.group
+    ? `<div class="kpi"><span class="big">${x.owned.length}</span><span class="small">álbuns</span></div>`
+    : `<div class="kpi"><span class="big">${x.owned.length}/${x.approx ? '≥' : ''}${x.total}</span><span class="small">${x.done ? 'completa' : (x.approx ? 'faltam ' + x.miss + '+' : 'faltam ' + x.miss)}</span></div>
+       <div class="bar ${x.done ? 'done' : ''}"><span style="width:${x.pct}%"></span></div>`;
+  return `<div class="card scard" onclick='openSerie(${JSON.stringify(x.serie).replace(/'/g, "&#39;")})'>
+    <div class="cover">${img}${x.done && !x.group ? '<span class="done-flag">✅ Completa</span>' : ''}${edit}</div>
+    <div class="body"><div class="serie">${stars(x.prio)} ${[...x.aut].slice(0, 3).map(esc).join(' · ')}</div>
+    <div class="titulo">${esc(x.serie)}</div>${kpi}
+    <div class="chips">${[...x.lang].map(l => `<span class="chip">${esc(l)}</span>`).join('')}${[...x.ed].slice(0, 2).map(e => `<span class="chip">${esc(e)}</span>`).join('')}</div></div></div>`;
+}
+
+function openSerie(s) { OPEN_SERIE = s; renderSheet(); document.getElementById('sheet').style.display = 'block'; document.body.style.overflow = 'hidden'; }
+function closeSheet() { OPEN_SERIE = null; document.getElementById('sheet').style.display = 'none'; document.body.style.overflow = ''; }
+
+function renderSheet() {
+  const x = seriesStats().find(y => y.serie === OPEN_SERIE);
+  if (!x) { closeSheet(); return; }
+  const num = b => { const v = parseFloat(String(b.n).replace(/[^\d.]/g, '')); return isNaN(v) ? 999 : v; };
+  const items = x.owned.map(b => ({ b, own: true })).concat(x.missing.map(b => ({ b, own: false })))
+    .sort((p, q) => num(p.b) - num(q.b) || (p.b.pt || p.b.orig).localeCompare(q.b.pt || q.b.orig, 'pt'));
+  document.getElementById('sheetPanel').innerHTML = `<div class="top"><h2>${esc(x.serie)} ${x.done && !x.group ? '✅' : ''}</h2>
+    <span class="small" style="color:var(--muted)">${x.owned.length} tens${x.group ? '' : ' · faltam ' + x.miss + (x.approx ? '+' : '')}</span>
+    <button class="close" onclick="closeSheet()">✕</button></div>
+    <div class="grid">${items.map(it => it.own ? ownedCard(it.b) : card(it.b)).join('')}</div>`;
+}
+
+function ownedCard(b) {
+  const title = b.pt || b.orig;
+  let action = '<span class="owned-badge">✔ Na coleção</span>';
+  if (DATA.user.owner && b.recebido) action += ` <button class="btn sec" style="margin-top:6px" onclick="act('markReceived','${b.id}',false)">Desfazer</button>`;
+  return `<div class="card"><div class="cover">${coverHtml(b)}</div><div class="body">
+    <div class="serie">${esc(b.serie)}${b.n && b.n !== '—' ? ' · n.º ' + esc(b.n) : ''}</div>
+    <div class="titulo">${esc(title)}</div>
+    ${b.pt && b.orig && b.orig !== b.pt ? `<div class="orig">${esc(b.orig)}</div>` : ''}
+    <div class="chips"><span class="chip">${esc(b.idioma || '')}</span>${splitEd(b.ed).map(e => `<span class="chip">${esc(e)}</span>`).join('')}</div>
+    ${b.notas ? `<div class="orig">${esc(b.notas)}</div>` : ''}
+    <div class="act">${action}</div></div></div>`;
 }
 
 function viewPrio() {
